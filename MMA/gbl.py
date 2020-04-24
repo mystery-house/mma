@@ -1,5 +1,7 @@
 # globals.py
-
+import os
+import platform
+import sys
 """
 This module is an integeral part of the program
 MMA - Musical Midi Accompaniment.
@@ -33,9 +35,28 @@ version = "16.06"        # Version -- June/2016
 
     The above variables can be accessed from the rest of the mma modules in
     the form "gbl.MMAdir", etc.
-"""
 
-from __main__ import MMAdir, platform
+    NOTE platform/MMAdir are actually now set below, which will allow MMA components to be imported/accessed outside of a 
+    __main__ loop -- Andy Chase 2020-04-23
+
+"""
+platform = platform.system()
+
+if platform == 'Windows':
+    dirlist = ( sys.path[0], "c:/mma", "c:/program files/mma", ".")
+elif platform == 'Darwin':
+    dirlist = ( sys.path[0], "/Users/Shared/mma",
+             "/usr/local/share/mma", "/usr/share/mma", '.' )
+else:
+    dirlist = ( sys.path[0], "/usr/local/share/mma", "/usr/share/mma", "/data/home/andy/Projects/mma" '.' )
+
+for d in dirlist:
+    moddir = os.path.join(d, 'MMA')
+    if os.path.isdir(moddir):
+        if not d in sys.path:
+            sys.path.insert(0, d)
+        MMAdir = d
+        break
 
 """ mtrks is storage for the MIDI data as it is created.
     It is a dict of class Mtrk() instances. Keys are the

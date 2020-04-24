@@ -50,23 +50,7 @@ if sys.version_info[0] == 2 and sys.version_info[1] < 6:
     and to have MMA's libraries in a different location (ie: /usr/share/mma).
 """
 
-platform = platform.system()
-
-if platform == 'Windows':
-    dirlist = ( sys.path[0], "c:/mma", "c:/program files/mma", ".")
-elif platform == 'Darwin':
-    dirlist = ( sys.path[0], "/Users/Shared/mma", 
-             "/usr/local/share/mma", "/usr/share/mma", '.' )
-else:
-    dirlist = ( sys.path[0], "/usr/local/share/mma", "/usr/share/mma", '.' )
-
-for d in dirlist:
-    moddir = os.path.join(d, 'MMA')
-    if os.path.isdir(moddir):
-        if not d in sys.path:
-            sys.path.insert(0, d)
-        MMAdir = d
-        break
+# Platform and MMADir definition moved to gbl, which will allow MMA components to be accessed by other code
 
 # Call the mainline code. Hopefully, byte-compiled.
 # NOTE: the variables MMAdir and platform are read (imported)
