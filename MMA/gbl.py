@@ -1,4 +1,7 @@
 # globals.py
+import os
+import platform
+import sys
 
 """
 This module is an integeral part of the program
