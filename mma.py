@@ -50,10 +50,7 @@ if sys.version_info[0] == 2 and sys.version_info[1] < 6:
     and to have MMA's libraries in a different location (ie: /usr/share/mma).
 """
 
-# Platform and MMADir definition moved to gbl, which will allow MMA components to be accessed by other code
-
 # Call the mainline code. Hopefully, byte-compiled.
-# NOTE: the variables MMAdir and platform are read (imported)
-#       by gbl.py.
+# NOTE: the variables MMAdir and platform are declared by gbl.py.
 import MMA.main
 
