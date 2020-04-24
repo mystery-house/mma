@@ -1,4 +1,4 @@
-
+# volume.py
 
 """
 This module is an integeral part of the program
@@ -24,7 +24,6 @@ Bob van der Poel <bob@mellowood.ca>
 
 from MMA.common import *
 import MMA.debug
-import re
 
 """ Volumes are specified in musical terms, but converted to
     midi velocities. This table has a list of percentage changes
@@ -86,55 +85,114 @@ def adjvolume(ln):
               ' '.join([ "%s=%s" % (a, int(vols[a] * 100)) for a in sorted(vols)]))
 
 
-calcVolumeRePat = re.compile(
-    # This is a regular expression to parse the input for the calcVolume
-    # function. The details are embedded in the comments below.
-    # Thanks to Johan Vromans!
 
-    # Note, there are 2 parts to this. It's either numeric
-    # or mnemonic. We use a | to join the 2 halves.
-    # opt. +/- (assigned to 'pre'), numeric value ('val'), and optional % to 'post'
-    # Note the '$' terminator which forces NUMERIC[%] to be end.
-    r'(?P<pre>[-+])?(?P<val>[\d.]+)(?P<post>%)?$'
-    + '|' +
-    # mnemonic is assigned to 'mn'.
-    r'(?P<mn>[OFPM]+)$',re.IGNORECASE )
+def XXcalcVolume(new, old):
+    """ Calculate a new volume "new" possibly adjusting from "old". """
+
+    if new[0] == '-' or new[0] == '+':
+        a = stof(new, "Volume expecting value for %% adjustment, not %s" % new)
+        v = old + (old * a / 100.)
+        if v < 0:
+            v = 0
+            warning("Volume adjustment results in 0 volume.")
+
+    elif new[0] in "0123456789":
+        v = stof(new, "Volume expecting value, not '%s'" % new) / 100.
+
+    else:
+        new = new.upper()
+
+        adj = None
+
+        if '+' in new:
+            new, adj = new.split('+')
+        elif '-' in new:
+            new, adj = new.split('-')
+            adj = '-' + adj
+
+        if not new in vols:
+            error("Unknown volume '%s'" % new)
+
+        v = vols[new]
+
+        if adj:
+            a = stoi(adj, "Volume expecting adjustment value, not %s" % adj)
+            v += (v * (a / 100.))
+
+    return v
 
 def calcVolume(new, old):
     """ Calculate a new volume "new" possibly adjusting from "old". """
 
-    m = calcVolumeRePat.match(new)
-    if m is None:
-        error("Unknown volume '%s'" % new)
+    def getNN(v):
+        v = v.upper()
+        if v in vols:
+            v = vols[v]
+            sym = True
+        else:
+            v = stof(v, "Volume: Setting/adjust expecting value "
+                     "or mnemonic not '%s'" % v) / 100
+            sym = False
+        return (v, sym)
+    
+    # Trailing % == add percentage to existing value
+    if new[-1] == "%":  
+        percent = True
+        new = new[:-1]
+    else:
+        percent = False
 
-    # Do we have a mnemonic?
+    # Leading + or - == add this value to existing
+    if new[0] in '+-':
+        if new[0] == '-':
+            adjust = -1
+        else:
+            adjust = 1
+        new = new[1:]
+    else:
+        adjust = 0
 
-    mn = m.group('mn')
-    if mn:
-        mn = mn.upper()
-        if not mn in vols:
-            error("Unknown volume mnemonic '%s'" % mn)
-        return vols[mn]
+    # if the value contains a +, - we have a 2 part setting
+    # like "M+20", "M+10%" or even "20-20". We split into 2 values
+    if '+' in new:
+        new, adj = new.split('+')
+        adj, sym = getNN(adj)
+        if sym:
+            warning("Volume: Adding a symbolic value to existing "
+                    "volume is not recommended.")
+    elif '-' in new:
+        new, adj = new.split('-')
+        adj, sym = getNN(adj)
+        adj *= -1
+        if sym:
+            warning("Volume: Subtracting a symbolic value from "
+                    "an existing volume is not recommended.")
+    else:
+        adj = 0
 
-    # So it must be a value.
-    val  = m.group('val')
-    pre  = m.group('pre')
-    post = m.group('post')
+    # now we have a single value parsed out to which we can apply adj
+    a, sym = getNN(new)
+    a += adj
+    
+    if adjust and percent:   # new is % adjusted original
+        a = old + (old * a)
+        if sym:
+            warning("Volume: Value (ie, -50%%), not '%s', recommended." % new)
+    elif adjust and not percent:  # new is value adjusted original
+        a = old + a
+        if sym:
+            warning("Volume: Value (ie, +20), not '%s', recommended." % new)
+    elif not adjust and percent:  # new is % of original
+        a = old * a
+        if sym:
+            warning("Volume: Value (ie, 30), not '%s', recommended." % new)
 
-    if pre and not post:
-        warning("Please use '%s%s%%' if you want to %screase the volume"
-                % (pre, val, "in" if pre == '+' else "de"))
+    if a <= 0:
+        a = 0
+        warning("Volume: Adjustment results in 0 volume.")
 
-    v = stof(val, "Volume expecting value, not '%s'" % val) / 100.
+    return a
 
-    if pre == '+':
-        v = old * ( 1 + v )
-    elif pre == '-':
-        v = old * ( 1 - v )
-    elif post == '%':
-        v = old * ( v )
-
-    return v
 
 def setVolume(ln):
     """ Set master volume. """
@@ -148,7 +206,7 @@ def setVolume(ln):
 
     futureVol = []
     if MMA.debug.debug:
-        dPrint("Volume: %s%%" % (100 * volume))
+        dPrint("Volume: %s%%" % volume)
 
 
 # The next 3 are called from the parser.
